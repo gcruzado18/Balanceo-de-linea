@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Simulador industrial de balanceo de líneas</title>
+<style>
+:root{--bg:#f3f4f7;--pn:#fff;--tx:#1c2330;--mu:#667085;--bd:#d9dde5;--ac:#d9600f;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#12151b;--pn:#1b2029;--tx:#e8ebf0;--mu:#98a2b3;--bd:#2e3542}}
+:root[data-theme="dark"]{--bg:#12151b;--pn:#1b2029;--tx:#e8ebf0;--mu:#98a2b3;--bd:#2e3542}
+*{box-sizing:border-box}html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+h1{font-size:18px;margin:0}h3{font-size:13px;margin:14px 0 6px;text-transform:uppercase;letter-spacing:.05em;color:var(--ac)}
+header{padding:12px 16px;border-bottom:1px solid var(--bd);background:var(--pn)}
+.app{display:grid;grid-template-columns:340px 1fr;gap:12px;padding:12px;max-width:1500px;margin:auto}
+@media(max-width:900px){.app{grid-template-columns:1fr}}
+.pn{background:var(--pn);border:1px solid var(--bd);border-radius:10px;padding:12px}
+label{display:block;font-size:12px;color:var(--mu);margin-top:6px}
+input,select,button{font:inherit;color:var(--tx);background:var(--bg);border:1px solid var(--bd);border-radius:6px;padding:5px 7px;width:100%}
+button{cursor:pointer;width:auto}button.p{background:var(--ac);color:#fff;border-color:var(--ac)}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+table{border-collapse:collapse;width:100%;font-size:12px}th,td{padding:3px;border-bottom:1px solid var(--bd);text-align:left}
+td input{padding:3px 4px}.tw{overflow-x:auto}
+.kp{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-bottom:10px}
+@media(max-width:700px){.kp{grid-template-columns:repeat(2,1fr)}.kp div{grid-column:auto!important}}
+.kp div{position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;gap:2px;min-height:68px;background:var(--pn);border:1px solid var(--bd);border-radius:10px;padding:9px 12px 10px}.kp span{font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--mu)}.kp b{font-size:22px;font-weight:700;line-height:1.1;font-variant-numeric:tabular-nums}.kp b em{font-size:12px;font-weight:500;font-style:normal;color:var(--mu)}.kp small{font-size:11px;color:var(--mu)}.kp .k{border-left:3px solid var(--ac)}.kp .k b{font-size:28px}.kp .g small{color:#2e9e5b}.kp .r small{color:#d33}.kp u{position:absolute;left:0;right:0;bottom:0;height:4px;background:var(--bd);text-decoration:none}.kp u i{display:block;height:100%}
+#wrap{position:relative;height:clamp(540px,78vh,700px);border-radius:10px;overflow:hidden;background:#0f1218;margin-bottom:12px}
+canvas{width:100%;height:100%;display:block;touch-action:none;cursor:grab}
+#ov{position:absolute;left:8px;top:8px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;font-size:12px;color:#ddd}
+#ov label{display:flex;gap:4px;align-items:center;margin:0;color:#ddd;background:#0009;padding:4px 7px;border-radius:6px}#ov input{width:auto}
+#ctl{position:absolute;left:8px;right:8px;bottom:8px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;background:#000b;padding:6px 8px;border-radius:8px;color:#eee;font-size:12px}
+#ctl button{background:#222;color:#fff;border-color:#444}#ctl button.p{background:var(--ac);border-color:var(--ac)}#ctl input{width:110px;padding:0}#nar{flex:1;min-width:200px}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}.tabs button.on{background:var(--ac);color:#fff;border-color:var(--ac)}
+.pg{display:none;overflow-x:auto}.pg.on{display:block}
+.warn{color:#d33;font-size:12px;margin:4px 0}.ok{color:#2e9e5b}tr.best td{background:#2e9e5b22;font-weight:600}tr.cl{cursor:pointer}
+svg{max-width:100%;height:auto}svg text{fill:var(--tx)}
+</style></head><body>
+<header><h1>Simulador industrial de balanceo de líneas</h1></header>
+<div class="app">
+<aside class="pn">
+<h3 style="margin-top:0">Escenario</h3>
+<label>Ejemplo cargado</label><select id="pre"></select>
+<div class="g2"><div><label>Método de asignación</label><select id="met">
+<option value="ltt">Mayor tiempo (ensamble)</option><option value="rpw">Peso posicional</option><option value="kw">Kilbridge-Wester</option><option value="com">COMSOAL (aleatorio)</option><option value="man">Manual (yo asigno)</option></select></div>
+<div><label>Configuración 3D</label><select id="lay"><option value="r">Recta</option><option value="u">En U</option></select></div></div>
+<h3>Producción</h3>
+<div class="g2"><div><label>Demanda (u/turno)</label><input id="D" type="number" min="1"></div><div><label>Minutos por turno</label><input id="H" type="number" min="1"></div></div>
+<h3>Costos (S/)</h3>
+<div class="g2"><div><label>Operario por hora</label><input id="ro" type="number" value="12"></div><div><label>Equipo/estación por hora</label><input id="re" type="number" value="8"></div>
+<div><label>Operarios por estación</label><input id="ops" type="number" value="1" min="1"></div><div><label>Material por unidad</label><input id="mat" type="number" value="15"></div></div>
+<h3>Tareas (editables)</h3>
+<div class="tw"><table id="tt"></table></div>
+<p><button id="add">+ Agregar tarea</button></p>
+<div id="mi"></div>
+</aside>
+<main>
+<div class="kp" id="kp"></div>
+<div id="wrap"><canvas id="cv"></canvas>
+<div id="ov"><label><input type="checkbox" id="rt" checked>Ruta de flujo</label><label>Velocidad cinta <input type="range" id="sp" min="0" max="3" step=".1" value="1" style="width:80px"></label><span>Arrastra para rotar · rueda para zoom</span></div>
+<div id="ctl"><button id="b0">⏮</button><button id="b1">◀</button><button id="b2">▶</button><button id="bp" class="p">Construir línea</button><button id="be">⏭</button><input type="range" id="sk" min="0" value="0"><span id="nar"></span></div></div>
+<div class="pn"><div class="tabs" id="tb"></div>
+<div class="pg on" id="p4"></div><div class="pg" id="p0"></div><div class="pg" id="p1"></div><div class="pg" id="p2"></div><div class="pg" id="p3"></div></div>
+</main></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const $=i=>document.getElementById(i),pal=['#e4572e','#29a6a6','#f3a712','#5b6ee1','#7bb661','#c55fa8','#3c91e6','#a07856','#e07a5f','#4f9d69','#9b8bd3','#c9a227'];
+const PR={vent:{n:'Mini ejemplo: ventilador de mesa',D:480,H:480,T:[['A',35,''],['B',5,'A'],['C',5,'B'],['D',30,'A'],['E',20,'D'],['F',40,'C'],['G',20,'E,F']]},
+e1:{n:'Ejercicio 1: 11 tareas',D:500,H:420,T:[['A',45,''],['B',11,'A'],['C',9,'B'],['D',50,''],['E',15,'D'],['F',12,'C'],['G',12,'C'],['H',12,'E'],['I',12,'E'],['J',8,'F,G,H,I'],['K',9,'J']]},
+e3:{n:'Ejercicio 3: 10 tareas',D:192,H:480,T:[['A',40,''],['B',80,'A'],['C',30,'D,E,F'],['D',25,'B'],['E',20,'B'],['F',15,'B'],['G',120,'A'],['H',145,'G'],['I',130,'H'],['J',115,'C,I']]},
+e4:{n:'Ejercicio 4: sillas escolares',D:480,H:480,T:[['A',36,''],['B',16,''],['C',36,'A,B'],['E',28,'B'],['D',12,'B'],['H',8,'A'],['F',16,'B,C'],['G',12,'C'],['I',16,'D,E,F,G,H']]},
+e5:{n:'Ejercicio 5: loncheras térmicas',D:576,H:480,T:[['A',24,''],['B',8,''],['C',16,'A,B'],['D',20,'B'],['E',20,'B'],['F',16,'A'],['G',24,'D'],['H',8,'E'],['I',8,'C,E,F,G,H']]}};
+const MN={ltt:'Mayor tiempo',rpw:'Peso posicional',kw:'Kilbridge-Wester',com:'COMSOAL',man:'Manual'},RM=['I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII'];
+const HEAD={ltt:'mayor tiempo primero',rpw:'mayor peso posicional primero',kw:'columnas del diagrama',com:'orden aleatorio (sorteo)',man:'orden de la lista'};
+const KEY={ltt:t=>t.t+'s',rpw:t=>'w='+t.w,kw:t=>'col '+(RM[t.c-1]||t.c),com:()=>'?',man:t=>t.t+'s'};
+const WHY={ltt:L=>`mayor tiempo (${L.t} s)`,rpw:L=>`mayor peso posicional (${L.w})`,kw:L=>`columna ${RM[L.c-1]||L.c}`,com:()=>'sorteo al azar',man:()=>'asignación manual'};
+let tasks=[],r=null,C=0,T=0,cache={},LG=[],stepK=null,pl=null,TB='sn',FILL=true,IT=300,SG=[],PB={},ops=[],pts=[],cum=[],prods=[];
+$('pre').innerHTML=Object.keys(PR).map(k=>`<option value="${k}">${PR[k].n}</option>`).join('');
+const f1=(v,d=1)=>(+v).toFixed(d),K=()=>stepK==null?tasks.length:Math.min(stepK,tasks.length),al=(a,b)=>a.id<b.id?-1:1;
+const nt=(id,t,p)=>({id,t,p:p?p.split(','):[],m:null,wo:null,co:null});
+function load(k){const p=PR[k];$('D').value=p.D;$('H').value=p.H;tasks=p.T.map(a=>nt(...a));stepK=0;rt();play()}
+function rt(){$('tt').innerHTML='<tr><th>ID</th><th>t(s)</th><th>Precede</th><th>Est.</th><th></th></tr>'+tasks.map((x,i)=>`<tr><td><input value="${x.id}" data-i="${i}" data-f="id" style="width:42px"></td><td><input type="number" value="${x.t}" data-i="${i}" data-f="t" style="width:58px"></td><td><input value="${x.p.join(',')}" data-i="${i}" data-f="p"></td><td><input type="number" min="1" value="${x.m||''}" data-i="${i}" data-f="m" style="width:46px" ${$('met').value=='man'?'':'disabled'}></td><td><button data-d="${i}">×</button></td></tr>`).join('');upd();rmi()}
+$('tt').addEventListener('input',e=>{const i=e.target.dataset.i;if(i==null)return;const f=e.target.dataset.f,v=e.target.value,x=tasks[i];
+ if(f=='p')x.p=v.split(',').map(s=>s.trim()).filter(Boolean);else if(f=='id')x.id=v.trim();else if(f=='m')x.m=+v||null;else x.t=Math.max(0,+v||0);upd();rmi()});
+$('tt').addEventListener('click',e=>{const d=e.target.dataset.d;if(d!=null){tasks.splice(d,1);rt()}});
+$('add').onclick=()=>{tasks.push(nt(String.fromCharCode(65+tasks.length%26)+(tasks.length>25?'2':''),10,''));rt()};
+$('pre').onchange=()=>load($('pre').value);
+$('met').onchange=()=>{if($('met').value=='man'&&r)r.st.forEach((s,i)=>s.forEach(x=>x.m=i+1));stepK=0;rt();play()};
+['D','H','ro','re','ops','mat','lay'].forEach(i=>$(i).oninput=()=>upd());
+function rmi(){const m=$('met').value,tb=(hd,rows)=>`<div class="tw"><table><tr>${hd.map(x=>`<th>${x}</th>`).join('')}</tr>${rows.map(a=>`<tr>${a.map(x=>`<td>${x}</td>`).join('')}</tr>`).join('')}</table></div>`,
+ inp=(i,k,ph)=>`<input type="number" data-i="${i}" data-k="${k}" placeholder="${ph}" value="${tasks[i][k]??''}" style="width:70px">`;let h=`<h3>Entradas de ${MN[m]}</h3>`;
+ if(m=='ltt')h+=`<label>Desempate</label><select id="tbs"><option value="sn"${TB=='sn'?' selected':''}>Más tareas siguientes</option><option value="al"${TB=='al'?' selected':''}>Orden alfabético</option></select>`+tb(['ID','t (s)','Sucesoras'],tasks.map(x=>[x.id,x.t,x.sn]));
+ if(m=='rpw')h+=tb(['ID','Tareas que le siguen','Peso auto','Peso a usar'],tasks.map((x,i)=>[x.id,x.sl||'—',x.wa,inp(i,'wo',x.wa)]))+'<small>Deja vacío para usar el peso calculado.</small>';
+ if(m=='kw')h+=`<label><input type="checkbox" id="fl" ${FILL?'checked':''} style="width:auto"> Rellenar huecos con tareas de columnas siguientes</label>`+tb(['ID','Col. auto','Columna a usar'],tasks.map((x,i)=>[x.id,RM[x.ca-1]||x.ca,inp(i,'co',x.ca)]));
+ if(m=='com')h+=`<div class="g2"><div><label>Iteraciones (se queda con la mejor)</label><input id="itx" type="number" min="1" value="${IT}"></div><div><label>&nbsp;</label><button class="p" id="rsx">Sortear de nuevo</button></div></div>`;
+ if(m=='man')h+='<small>Escribe el número de estación de cada tarea en la tabla de arriba. Un número nuevo crea una estación.</small>';$('mi').innerHTML=h}
+$('mi').addEventListener('input',e=>{const t=e.target,i=t.dataset.i;if(i!=null){tasks[i][t.dataset.k]=t.value===''?null:+t.value;upd()}else if(t.id=='itx'){IT=Math.max(1,+t.value||1);upd()}});
+$('mi').addEventListener('change',e=>{if(e.target.id=='tbs'){TB=e.target.value;upd()}if(e.target.id=='fl'){FILL=e.target.checked;upd()}});
+$('mi').addEventListener('click',e=>{if(e.target.id=='rsx'){cache={};stepK=0;upd();play()}});
+function info(){const by={},ids=new Set(tasks.map(x=>x.id));tasks.forEach((x,i)=>{x.p=x.p.filter(q=>ids.has(q)&&q!=x.id);by[x.id]=x;x.col=pal[i%12]});
+ const sc={};const f=id=>{if(sc[id])return sc[id];sc[id]=new Set();tasks.forEach(x=>{if(x.p.includes(id)){sc[id].add(x.id);f(x.id).forEach(y=>sc[id].add(y))}});return sc[id]};tasks.forEach(x=>f(x.id));
+ const cl={},g=(x,d)=>{if(d>60)throw 0;return cl[x.id]||(cl[x.id]=1+Math.max(0,...x.p.map(q=>g(by[q],d+1))))};tasks.forEach(x=>g(x,0));
+ tasks.forEach(x=>{x.sl=[...sc[x.id]].sort().join(', ');x.sn=sc[x.id].size;x.wa=x.t+[...sc[x.id]].reduce((a,b)=>a+by[b].t,0);x.ca=cl[x.id];x.w=x.wo!=null?x.wo:x.wa;x.c=x.co!=null?x.co:x.ca})}
+const RU={ltt:c=>c.sort((a,b)=>b.t-a.t||(TB=='sn'?b.sn-a.sn:0)||al(a,b))[0],rpw:c=>c.sort((a,b)=>b.w-a.w||al(a,b))[0],
+kw:c=>{if(!FILL){const m=Math.min(...c.map(x=>x.c));c=c.filter(x=>x.c==m)}return c.sort((a,b)=>a.c-b.c||b.t-a.t||al(a,b))[0]},com:c=>c[Math.random()*c.length|0]};
+function run(rule){const done=new Set(),st=[];let cur=[],rem=C;const left=new Set(tasks.map(x=>x.id));
+ while(left.size){const av=tasks.filter(x=>left.has(x.id)&&x.p.every(q=>done.has(q)));let c=av.filter(x=>x.t<=rem+1e-9);
+  if(!c.length){if(cur.length){st.push(cur);cur=[];rem=C;continue}c=av}
+  const k=rule(c);cur.push(k);rem-=k.t;left.delete(k.id);done.add(k.id)}
+ if(cur.length)st.push(cur);return st}
+function ev(st){const loads=st.map(s=>s.reduce((a,x)=>a+x.t,0)),N=st.length,h=$('H').value/60,D=+$('D').value,rate=N*(+$('ops').value*$('ro').value+ +$('re').value),lab=rate*h,tot=N*C;
+ return{st,loads,N,e:T/tot,idle:tot-T,mx:Math.max(0,...loads),lab,unit:lab/D+ +$('mat').value,idleC:(tot-T)/tot*lab/D,total:lab+$('mat').value*D}}
+function solve(m){if(m=='man'){const g={};tasks.forEach(x=>(g[x.m||1]=g[x.m||1]||[]).push(x));return ev(Object.keys(g).sort((a,b)=>a-b).map(k=>g[k]))}
+ if(m!='com')return ev(run(RU[m]));if(cache.com)return cache.com;let b=null;for(let i=0;i<IT;i++){const e=ev(run(RU.com));if(!b||e.N<b.N||(e.N==b.N&&e.mx<b.mx))b=e}return cache.com=b}
+function replay(){const asg=new Set();LG=[];let o=0;r.st.forEach((S,i)=>{let acc=0;S.forEach(k=>{const cd=tasks.filter(x=>!asg.has(x.id)&&x.p.every(q=>asg.has(q))&&x.t<=C-acc+1e-9);acc+=k.t;k.ord=o;LG.push({s:i+1,cands:cd.map(x=>x.id),p:k.id,t:k.t,acc,rem:C-acc,o:o++,w:k.w,c:k.c});asg.add(k.id)})})}
+function upd(){try{info()}catch(e){$('kp').innerHTML='<div><b>Error</b><span>Hay un ciclo en las precedencias</span></div>';return}
+ const D=+$('D').value,H=+$('H').value;if(!D||!H||!tasks.length)return;const key=[D,H,TB,FILL,IT,$('met').value,tasks.map(x=>x.id+x.t+x.p+x.wo+x.co+x.m).join()].join('|');if(cache.key!=key)cache={key};
+ C=H*60/D;T=tasks.reduce((a,x)=>a+x.t,0);r=solve($('met').value);const nm=Math.ceil(T/C-1e-9),real=H*60/Math.max(r.mx,1e-9),hh=H/60,bi=r.loads.indexOf(r.mx),cap=Math.floor(real);
+ const E=t=>'<em>'+t+'</em>';$('kp').innerHTML=[['Estaciones',r.N+E(' de '+nm+' mín.'),r.N==nm?'en el mínimo teórico':'+'+(r.N-nm)+' sobre el mínimo',2,null,'k'],['Eficiencia',f1(r.e*100)+E(' %'),'demora '+f1(100-r.e*100)+' %',2,r.e,'k'],['Ciclo C',f1(C)+E(' s'),'',1],['Tiempo total T',T+E(' s'),'',1],['Tiempo ocioso',f1(r.idle)+E(' s'),'por unidad producida',2],['Capacidad real',cap+E(' u'),'por turno · '+(cap>=D?'cumple':'no cumple'),1,null,cap>=D?'g':'r'],['Costo por unidad',E('S/ ')+f1(r.unit,2),'',1],['Costo del turno',E('S/ ')+f1(r.total,0),'mano de obra + equipo + material',2]].map(a=>`<div class="${a[5]||''}" style="grid-column:span ${a[3]}"><span>${a[0]}</span><b>${a[1]}</b>${a[2]?`<small>${a[2]}</small>`:''}${a[4]!=null?`<u><i style="width:${Math.min(100,a[4]*100)}%;background:${a[4]>=.9?'#2e9e5b':a[4]>=.75?'#e0a100':'#d33'}"></i></u>`:''}</div>`).join('');
+ pages(nm,D);replay();b3();sync()}
+function pages(nm,D){const n=r.N,W=620,bw=Math.min(70,480/n),mx=Math.max(C,r.mx)*1.12,y=v=>230-v/mx*210,sw=540/n;let s=`<svg viewBox="0 0 ${W} 262"><text x="4" y="14" font-size="11">Yamazumi: carga por estación (s)</text>`;
+ r.st.forEach((S,i)=>{let a=0;const x=55+i*sw+(sw-bw)/2;S.forEach(k=>{s+=`<rect x="${x}" y="${y(a+k.t)}" width="${bw}" height="${Math.max(0,y(a)-y(a+k.t))}" fill="${k.col}" stroke="#0004"/><text x="${x+bw/2}" y="${(y(a)+y(a+k.t))/2+4}" text-anchor="middle" font-size="11" style="fill:#fff">${k.id}</text>`;a+=k.t});s+=`<text x="${x+bw/2}" y="248" text-anchor="middle" font-size="12">E${i+1} · ${f1(r.loads[i]/C*100,0)}%</text>`});
+ $('p0').innerHTML=s+`<line x1="50" x2="${W-4}" y1="${y(C)}" y2="${y(C)}" stroke="#e33" stroke-dasharray="5"/><text x="${W-60}" y="${y(C)-4}" font-size="11" style="fill:#e33">C=${f1(C)}</text></svg>`;
+ const cols={};tasks.forEach(x=>(cols[x.c]=cols[x.c]||[]).push(x));const mc=Math.max(...Object.keys(cols)),mr=Math.max(...Object.values(cols).map(a=>a.length)),pos={},sOf={};r.st.forEach((S,i)=>S.forEach(x=>sOf[x.id]=i));
+ Object.entries(cols).forEach(([c,a])=>a.forEach((x,j)=>pos[x.id]=[40+(c-1)*95,30+j*62+(mr-a.length)*31]));
+ let d=`<svg viewBox="0 0 ${80+mc*95} ${40+mr*62}" style="min-width:${Math.min(700,80+mc*95)}px"><defs><marker id="ar" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0L8,4L0,8z" fill="#888"/></marker></defs>`;
+ tasks.forEach(x=>x.p.forEach(q=>{const a=pos[q],b=pos[x.id],dx=b[0]-a[0],dy=b[1]-a[1],L=Math.hypot(dx,dy);d+=`<line x1="${a[0]+dx/L*20}" y1="${a[1]+dy/L*20}" x2="${b[0]-dx/L*22}" y2="${b[1]-dy/L*22}" stroke="#888" marker-end="url(#ar)"/>`}));
+ tasks.forEach(x=>{const p=pos[x.id];d+=`<circle cx="${p[0]}" cy="${p[1]}" r="20" fill="${pal[sOf[x.id]%12]}"/><text x="${p[0]}" y="${p[1]+4}" text-anchor="middle" font-weight="700" style="fill:#fff">${x.id}</text><text x="${p[0]}" y="${p[1]+33}" text-anchor="middle" font-size="10">${x.t}s</text>`});
+ $('p1').innerHTML=d+'</svg><small>Color = estación asignada · columnas del diagrama</small>';
+ const rows=['ltt','rpw','kw','com'].map(m=>[m,solve(m)]),bn=Math.min(...rows.map(a=>a[1].N)),be=Math.max(...rows.map(a=>a[1].e));
+ $('p2').innerHTML='<table><tr><th>Método</th><th>Estaciones</th><th>Eficiencia</th><th>Ocio (s)</th><th>S/ por unidad</th><th>Costo turno</th></tr>'+rows.map(([m,e])=>`<tr class="cl ${e.N==bn&&e.e==be?'best':''}" data-m="${m}"><td>${MN[m]}</td><td>${e.N}</td><td>${f1(e.e*100)} %</td><td>${f1(e.idle)}</td><td>${f1(e.unit,2)}</td><td>S/ ${f1(e.total,0)}</td></tr>`).join('')+'</table><small>Clic en una fila para construir la línea con ese método. Verde = mejor resultado.</small>';
+ let w='';const sx={};r.st.forEach((S,i)=>S.forEach(x=>sx[x.id]=i));tasks.forEach(x=>x.p.forEach(q=>{if(sx[q]>sx[x.id])w+=`<div class="warn">Precedencia violada: ${q} debe ir antes que ${x.id}</div>`}));r.loads.forEach((l,i)=>{if(l>C+1e-9)w+=`<div class="warn">La estación ${i+1} supera el ciclo (${l}s &gt; ${f1(C)}s)</div>`});
+ const h=$('H').value/60,rt1=(+$('ops').value*$('ro').value+ +$('re').value)*h;$('p3').innerHTML=(w||'<div class="ok">Sin alertas: respeta precedencias y ciclo.</div>')+'<table><tr><th>Est.</th><th>Tareas</th><th>Carga (s)</th><th>Ocio (s)</th><th>Uso</th><th>Costo/turno</th></tr>'+r.st.map((S,i)=>`<tr><td>E${i+1}</td><td>${S.map(x=>x.id).join(' → ')}</td><td>${r.loads[i]}</td><td>${f1(C-r.loads[i])}</td><td>${f1(r.loads[i]/C*100)} %</td><td>S/ ${f1(rt1,0)}</td></tr>`).join('')+`</table>
+ <p>Mano de obra + equipo: <b>S/ ${f1(r.lab,0)}</b> · Material: <b>S/ ${f1($('mat').value*D,0)}</b> · Costo del ocio por unidad: <b>S/ ${f1(r.idleC,2)}</b> · Estaciones sobre el mínimo teórico: <b>${r.N-nm}</b> (≈ S/ ${f1((r.N-nm)*rt1,0)} por turno).</p>`}
+$('p2').onclick=e=>{const t=e.target.closest('tr');if(t&&t.dataset.m){$('met').value=t.dataset.m;stepK=0;rt();play()}};
+['Bitácora de asignación','Yamazumi','Precedencias','Comparar métodos','Asignación y costos'].forEach((t,i)=>{const b=document.createElement('button');b.textContent=t;b.className=i?'':'on';b.onclick=()=>{document.querySelectorAll('.pg').forEach((p,j)=>p.classList.toggle('on',i==j));[...$('tb').children].forEach((c,j)=>c.classList.toggle('on',i==j))};$('tb').appendChild(b)});
+/* ---- control de pasos ---- */
+function play(){clearInterval(pl);if(K()>=tasks.length)stepK=0;sync();pl=setInterval(()=>{if(K()>=tasks.length){clearInterval(pl);return}stepK=K()+1;sync()},1100)}
+const stop=()=>clearInterval(pl);
+$('b0').onclick=()=>{stop();stepK=0;sync()};$('b1').onclick=()=>{stop();stepK=Math.max(0,K()-1);sync()};$('b2').onclick=()=>{stop();stepK=Math.min(tasks.length,K()+1);sync()};
+$('bp').onclick=play;$('be').onclick=()=>{stop();stepK=tasks.length;sync()};$('sk').oninput=e=>{stop();stepK=+e.target.value;sync()};
+function sync(){if(!r)return;const k=K(),m=$('met').value;$('sk').max=tasks.length;$('sk').value=k;
+ const nx=LG[k],cs=new Set(nx?nx.cands:[]),ac={};LG.forEach(x=>{if(x.o<k)ac[x.s]=x.acc});
+ SG.forEach((s,i)=>{const ut=(ac[i+1]||0)/C;s.open=ac[i+1]!=null;s.tg=ut;lb(s.lab,`E${i+1} · ${f1(ut*100,0)}%`,ut>1.0001?'#ff6b6b':'#fff');s.bar.material.color.setHex(ut>1.0001?0xdd3333:ut>=.9?0x2e9e5b:0xe0a100)});
+ tasks.forEach(x=>{const p=PB[x.id];if(!p)return;p.in=x.ord<k;p.m.material.emissive.setHex(!p.in&&cs.has(x.id)?0x7a6000:(x.ord==k-1?0x444444:0))});
+ let t='Banco de tareas ordenado por la regla ('+HEAD[m]+'). Pulsa Construir línea.';if(k>0){const L=LG[k-1];t=`Paso ${k}/${tasks.length}: entre ${L.cands.join(', ')} → ${L.p} a E${L.s} (${WHY[m](L)})`}if(k==tasks.length)t+=' · Línea completa';$('nar').textContent=t;
+ const rows=LG.filter(x=>x.o<k);$('p4').innerHTML='<div class="tw"><table><tr><th>Est.</th><th>Candidatas (caben)</th><th>Asignada</th><th>t (s)</th><th>Acumulado</th><th>Restante</th></tr>'+rows.map((x,i)=>`<tr${i==k-1?' class="best"':''}><td>${x.s}</td><td>${x.cands.join(', ')}</td><td>${x.p}</td><td>${x.t}</td><td>${f1(x.acc)}</td><td>${f1(x.rem)}</td></tr>`).join('')+'</table></div><div style="margin-top:8px">'+r.st.map((_,i)=>`<div style="display:flex;align-items:center;gap:6px;margin:3px 0"><span style="width:28px">E${i+1}</span><div style="flex:1;background:var(--bg);border:1px solid var(--bd);height:12px"><div style="width:${Math.min(100,(ac[i+1]||0)/C*100)}%;height:100%;background:var(--ac)"></div></div><span style="width:100px">${f1(ac[i+1]||0)} / ${f1(C)} s</span></div>`).join('')+'</div>'}
+/* ---- 3D ---- */
+const cv=$('cv'),R=new THREE.WebGLRenderer({canvas:cv,antialias:true}),S3=new THREE.Scene(),cam=new THREE.PerspectiveCamera(45,1,.1,300),G=new THREE.Group(),RG=new THREE.Group(),TG=new THREE.Vector3(0,1,-4),V3=THREE.Vector3;
+S3.background=new THREE.Color(0x0f1218);S3.add(G,new THREE.AmbientLight(0xffffff,.65));const dl=new THREE.DirectionalLight(0xffffff,.8);dl.position.set(10,20,8);S3.add(dl);
+const fl=new THREE.Mesh(new THREE.PlaneGeometry(90,60),new THREE.MeshLambertMaterial({color:0x1b2029}));fl.rotation.x=-Math.PI/2;S3.add(fl,new THREE.GridHelper(90,45,0x333b49,0x262d38));
+let th=.7,ph=1.0,rad=26;
+function upc(){cam.position.set(TG.x+rad*Math.sin(ph)*Math.cos(th),TG.y+rad*Math.cos(ph),TG.z+rad*Math.sin(ph)*Math.sin(th));cam.lookAt(TG)}
+let dr=null;cv.onpointerdown=e=>{dr=[e.clientX,e.clientY];cv.setPointerCapture(e.pointerId)};cv.onpointerup=()=>dr=null;
+cv.onpointermove=e=>{if(!dr)return;th-=(e.clientX-dr[0])*.008;ph=Math.min(1.5,Math.max(.15,ph-(e.clientY-dr[1])*.008));dr=[e.clientX,e.clientY];upc()};
+cv.onwheel=e=>{e.preventDefault();rad=Math.min(80,Math.max(8,rad*(1+e.deltaY*.001)));upc()};
+function rs(){const w=cv.clientWidth,h=cv.clientHeight;R.setSize(w,h,false);cam.aspect=w/h;cam.updateProjectionMatrix()}new ResizeObserver(rs).observe(cv);
+function lab(t,c,w,h){const k=document.createElement('canvas');k.width=h?64:512;k.height=64;const s=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(k)}));s.userData.k=k;w=w||3.6;s.scale.set(w,h||w/8,1);lb(s,t,c);return s}
+function lb(s,t,c){const k=s.userData.k,g=k.getContext('2d');const W=k.width;g.clearRect(0,0,W,64);g.fillStyle=c;let fs=W<100?52:38;g.font='bold '+fs+'px sans-serif';while(g.measureText(t).width>W-16&&fs>10){fs--;g.font='bold '+fs+'px sans-serif'}g.textAlign='center';g.lineWidth=7;g.strokeStyle='#000';g.strokeText(t,W/2,32+fs*.37);g.fillText(t,W/2,32+fs*.37);s.material.map.needsUpdate=true}
+const M=(c,o)=>new THREE.MeshLambertMaterial(Object.assign({color:c},o||{}));
+function b3(){while(G.children.length)G.remove(G.children[0]);RG.clear();G.add(RG);ops=[];prods=[];SG=[];PB={};
+ const n=r.N,k=Math.ceil(n/2),u=$('lay').value=='u'&&n>1,P=[],m=$('met').value,kk=K();
+ r.st.forEach((_,i)=>{let x,z,o=1;if(!u){x=(i-(n-1)/2)*4;z=0}else if(i<k){x=(i-(k-1)/2)*4;z=-3.5}else{x=((k-1)-(i-k)-(k-1)/2)*4;z=3.5;o=-1}P.push({x,z,o})});
+ const V=(x,z)=>new V3(x,1.05,z);pts=[V(P[0].x-3.5,P[0].z),...P.map(p=>V(p.x,p.z))];const l=P[n-1];pts.push(V(l.x+(u?-3.5:3.5),l.z));
+ cum=[0];for(let i=1;i<pts.length;i++)cum.push(cum[i-1]+pts[i].distanceTo(pts[i-1]));
+ for(let i=1;i<pts.length;i++){const a=pts[i-1],b=pts[i],mm=new THREE.Mesh(new THREE.BoxGeometry(a.distanceTo(b),.12,.8),M(0x2a2f38));mm.position.copy(a).add(b).multiplyScalar(.5);mm.position.y=1;mm.rotation.y=-Math.atan2(b.z-a.z,b.x-a.x);G.add(mm);
+  const c=new THREE.Mesh(new THREE.ConeGeometry(.22,.6,8).rotateZ(-Math.PI/2),M(0xff8a2a));c.position.copy(mm.position);c.position.y=1.5;c.rotation.y=mm.rotation.y;RG.add(c)}
+ RG.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts.map(p=>p.clone().setY(1.3))),new THREE.LineBasicMaterial({color:0xff8a2a})));RG.visible=$('rt').checked;
+ r.st.forEach((S,i)=>{const {x,z,o}=P[i],g=new THREE.Group();g.scale.y=.001;
+  const tb=new THREE.Mesh(new THREE.BoxGeometry(3,.9,2.2),M(0x3a4252));tb.position.set(x,.45,z);g.add(tb);
+  const bd=new THREE.Mesh(new THREE.CylinderGeometry(.35,.4,1.1,12),M(0x3c91e6)),hd=new THREE.Mesh(new THREE.SphereGeometry(.27,12,12),M(0xf1c9a5));bd.position.set(x,.55,z+o*1.7);hd.position.set(x,1.35,z+o*1.7);g.add(bd,hd);ops.push([bd,hd,i]);
+  const bar=new THREE.Mesh(new THREE.CylinderGeometry(.4,.4,3,16).translate(0,1.5,0),M(0xe0a100));bar.position.set(x,0,z-o*1.9);bar.scale.y=.02;g.add(bar);
+  const rg=new THREE.Mesh(new THREE.BoxGeometry(1.1,.04,1.1),M(0xff4444,{transparent:true,opacity:.5}));rg.position.set(x,3,z-o*1.9);g.add(rg);
+  const lbs=lab('E'+(i+1),'#fff');lbs.position.set(x,4.1,z-o*1.9);g.add(lbs);G.add(g);SG.push({g,bar,lab:lbs,open:false,tg:0});
+  let a=-1.35;S.forEach(t=>{const w=Math.max(.15,t.t/C*2.7);t.slot=new V3(x+a+w/2,1.3,z+o*.75);t.sw=w-.03;a+=w})});
+ const ord=[...tasks],zp=u?-10.5:-8.5,mc=Math.max(...tasks.map(x=>x.c));TG.set(0,1,u?-5:-4);
+ if(m=='ltt')ord.sort((a,b)=>b.t-a.t||al(a,b));else if(m=='rpw')ord.sort((a,b)=>b.w-a.w||al(a,b));else if(m=='com')ord.sort(()=>Math.random()-.5);
+ ord.forEach((t,j)=>{if(m=='kw'){const cs=tasks.filter(y=>y.c==t.c).sort((a,b)=>b.t-a.t||al(a,b));t.pp=new V3((t.c-1-(mc-1)/2)*2.4,.6,zp-cs.indexOf(t)*1.4)}else{const per=Math.min(8,tasks.length);t.pp=new V3(((j%per)-(per-1)/2)*1.7,.6,zp-Math.floor(j/per)*1.5)}});
+ const pl_=new THREE.Mesh(new THREE.BoxGeometry(16,.08,7),M(0x2a3140));pl_.position.set(0,.04,zp-1.6);G.add(pl_);
+ tasks.forEach(t=>{const mt=M(t.col),b=new THREE.Mesh(new THREE.BoxGeometry(1,1,1),mt),lbl=lab(t.id,'#fff',.7,.7),inn=t.ord<kk;G.add(b,lbl);
+  PB[t.id]={m:b,lb:lbl,t,in:inn,pos:(inn?t.slot:t.pp).clone(),sc:inn?new V3(t.sw,.4,.5):new V3(1,.5,1),sI:new V3(t.sw,.4,.5),sO:new V3(1,.5,1)}});
+ const np=Math.max(4,Math.round(cum[cum.length-1]/3.5));for(let i=0;i<np;i++){const mm=new THREE.Mesh(new THREE.BoxGeometry(.6,.45,.6),M(0xff8a2a));G.add(mm);prods.push(mm)}
+ rad=Math.max(24,n*3.4);upc();rs()}
+function at(s){let i=1;while(i<cum.length-1&&cum[i]<s)i++;const t=(s-cum[i-1])/(cum[i]-cum[i-1]||1);return pts[i-1].clone().lerp(pts[i],t)}
+$('rt').onchange=()=>RG.visible=$('rt').checked;let tm=0,last=performance.now();
+(function an(now){requestAnimationFrame(an);const dt=Math.min(.05,(now-last)/1000);last=now;tm+=dt*$('sp').value*2;const f=1-Math.exp(-dt*5);
+ if(prods.length){const L=cum[cum.length-1];prods.forEach((m,i)=>{m.position.copy(at((tm+i*L/prods.length)%L)).y=1.35})}
+ for(const id in PB){const p=PB[id],t=p.t,tg=p.in?t.slot:t.pp;p.pos.lerp(tg,f);p.sc.lerp(p.in?p.sI:p.sO,f);const d=p.pos.distanceTo(tg);p.m.position.copy(p.pos);p.m.position.y+=Math.min(2.5,d*.3);p.m.scale.copy(p.sc);p.lb.position.set(p.pos.x,p.m.position.y+.75,p.pos.z);p.lb.visible=!p.in}
+ SG.forEach(s=>{s.g.scale.y+=((s.open?1:.001)-s.g.scale.y)*f;s.g.visible=s.g.scale.y>.02;s.bar.scale.y+=(Math.max(.02,Math.min(1.5,s.tg))-s.bar.scale.y)*f});
+ ops.forEach(([b,h,i])=>{const u=r?Math.min(1,r.loads[i]/C):.5,s=Math.sin(now/(350/(.3+u))+i)*.04;b.scale.y=1+s;h.position.y=1.35+s*1.2});R.render(S3,cam)})(performance.now());
+load('vent');
+</script></body></html>
